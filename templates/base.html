@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAG Weekly Tasks</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<style>
+  :root{--mag:#1a4fa0;--mag-lt:#2E75B6;--accent:#e8f0fe;}
+  body{background:#f4f6fb;font-family:'Segoe UI',sans-serif;}
+  .navbar{background:var(--mag)!important;}
+  .navbar-brand,.nav-link,.navbar-text{color:#fff!important;}
+  .card{border:none;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.07);}
+  .card-header{background:var(--mag);color:#fff;border-radius:12px 12px 0 0!important;font-weight:600;}
+  .btn-primary{background:var(--mag);border-color:var(--mag);}
+  .btn-primary:hover{background:var(--mag-lt);border-color:var(--mag-lt);}
+  .badge-status-completed{background:#198754;}
+  .badge-status-in-progress{background:#fd7e14;}
+  .badge-status-pending{background:#6c757d;}
+  .task-input{font-family:monospace;font-size:.95rem;}
+  .week-pill{background:var(--accent);color:var(--mag);border-radius:20px;
+             padding:4px 14px;font-size:.85rem;font-weight:600;}
+  .hours-badge{background:var(--mag);color:#fff;border-radius:8px;
+               padding:2px 10px;font-weight:700;}
+  .tbl thead th{background:var(--mag);color:#fff;font-weight:600;font-size:.85rem;}
+  .tbl tbody tr:hover{background:#f0f5ff;}
+  .hint{font-size:.8rem;color:#6c757d;}
+  .flash-success{background:#d1e7dd;color:#0a3622;border-radius:8px;padding:10px 16px;}
+  .flash-error{background:#f8d7da;color:#58151c;border-radius:8px;padding:10px 16px;}
+  .entry-card{border-left:4px solid var(--mag-lt);background:#fff;border-radius:0 8px 8px 0;
+              padding:10px 14px;margin-bottom:8px;}
+  .ie-field{border:1px solid transparent;background:transparent;box-shadow:none;
+            padding:2px 4px;border-radius:4px;transition:border-color .15s,background .15s;}
+  .ie-field:hover{border-color:#dee2e6!important;}
+  .status-sel{cursor:pointer;font-size:.75rem;padding:2px 10px;border-radius:12px;
+              font-weight:600;border:none;outline:none;transition:background .2s;}
+  .s-Completed{background:#d1e7dd;color:#0a3622;}
+  .s-In-Progress{background:#fff3cd;color:#664d03;}
+  .s-Pending{background:#e2e3e5;color:#383d41;}
+  .s-On-Hold{background:#f8d7da;color:#58151c;}
+</style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg px-3 py-2">
+  <a class="navbar-brand fw-bold fs-5" href="/"><i class="bi bi-clipboard-data me-2"></i>MAG Weekly Tasks</a>
+  <div class="ms-auto d-flex align-items-center gap-3">
+    {% if session.user_id %}
+    <span class="navbar-text opacity-75">Hi, {{ session.full_name.split()[0] }}</span>
+    <a href="/logout" class="btn btn-sm btn-outline-light">Logout</a>
+    {% endif %}
+  </div>
+</nav>
+<div class="container py-4">
+{% with msgs = get_flashed_messages(with_categories=true) %}
+  {% for cat,msg in msgs %}
+  <div class="flash-{{cat}} mb-3">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

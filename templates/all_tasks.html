@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <div>
+    <h5 class="mb-0 fw-bold text-dark">All My Tasks</h5>
+    <span class="hint">Every entry you have ever logged</span>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="/" class="btn btn-outline-primary btn-sm"><i class="bi bi-house me-1"></i>Dashboard</a>
+    <form method="get" class="d-flex gap-2">
+      <select name="week" class="form-select form-select-sm" onchange="this.form.submit()">
+        {% for w in weeks %}
+        <option value="{{ w }}" {% if w==sel_week %}selected{% endif %}>Week of {{ w }}</option>
+        {% endfor %}
+      </select>
+      <a href="/report?week={{ sel_week }}" class="btn btn-success btn-sm">
+        <i class="bi bi-file-earmark-excel me-1"></i>Report
+      </a>
+    </form>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header d-flex justify-content-between">
+    <span><i class="bi bi-table me-2"></i>Tasks — week ending {{ sel_week }}</span>
+    <span class="hours-badge">{{ total_hours }}h</span>
+  </div>
+  <div class="card-body p-0">
+    {% if tasks %}
+    <div class="table-responsive">
+    <table class="table tbl table-hover mb-0 small">
+      <thead>
+        <tr>
+          <th>Task ID</th><th>Type</th><th style="min-width:220px">Description</th>
+          <th>Created</th><th>Resolved</th><th>Priority</th><th>Status</th>
+          <th>Hours</th><th>Notes</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for t in tasks %}
+        <tr>
+          <td class="fw-semibold">{{ t.task_id }}</td>
+          <td><span class="badge bg-secondary">{{ t.type }}</span></td>
+          <td>{{ t.description }}</td>
+          <td>{{ t.creation_date }}</td>
+          <td>{{ t.resolved_on }}</td>
+          <td>{{ t.priority }}</td>
+          <td><span class="badge badge-status-{{ t.status.lower().replace(' ','-') }}">{{ t.status }}</span></td>
+          <td class="text-center fw-bold">{{ t.hours_spent }}</td>
+          <td style="max-width:160px;font-size:.75rem">{{ t.notes or '' }}</td>
+          <td>
+            <a href="/delete/{{ t.id }}" class="btn btn-outline-danger btn-sm py-0"
+               onclick="return confirm('Delete?')"><i class="bi bi-trash"></i></a>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="table-info fw-bold">
+          <td colspan="7" class="text-end">Total</td>
+          <td class="text-center">{{ total_hours }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>No tasks for this week.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

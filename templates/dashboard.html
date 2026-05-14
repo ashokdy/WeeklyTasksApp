@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block content %}
+<!-- Week header -->
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h5 class="mb-0 fw-bold text-dark">Dashboard</h5>
+    <span class="week-pill mt-1 d-inline-block">
+      Week: {{ mon.strftime("%d %b") }} – {{ fri.strftime("%d %b %Y") }}
+    </span>
+  </div>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <form method="get" class="d-flex gap-2 align-items-center">
+      <label class="hint mb-0">View week:</label>
+      <select name="week" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+        {% for w in weeks %}
+        <option value="{{ w }}" {% if w==sel_week %}selected{% endif %}>
+          {{ w }}{% if w == fri.isoformat() %} (current){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+    <a href="/report?week={{ fri.isoformat() }}" class="btn btn-success btn-sm">
+      <i class="bi bi-file-earmark-excel me-1"></i>Weekly Report
+    </a>
+    <a href="/clear-week/{{ fri.isoformat() }}"
+       class="btn btn-outline-danger btn-sm"
+       onclick="return confirm('Delete ALL your entries for week {{ mon.strftime('%d %b') }}–{{ fri.strftime('%d %b') }}?')">
+      <i class="bi bi-trash me-1"></i>Clear Week
+    </a>
+  </div>
+</div>
+
+<!-- Input card -->
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-plus-circle me-2"></i>Add Tasks (Natural Language)</div>
+  <div class="card-body p-4">
+    <form method="post" action="/add">
+      <input type="hidden" name="default_date" value="{{ mon.isoformat() }}">
+      <textarea name="raw" class="form-control task-input mb-2" rows="3"
+        placeholder="TSK24645 Super+: Leasing enhancements in progress 3 on 8 Apr and 3 on 9 Apr&#10;TSK24642 One+: Google Location Policy changes 3 on 8 Apr 5 on 9 Apr 7 on 10 Apr with comments as &quot;changes are done, testing in all scenarios&quot;&#10;Adhoc Type - R&D Studied background location usage in RN on Apr 8 for 3 hours" required></textarea>
+      <div class="d-flex align-items-center gap-3">
+        <button class="btn btn-primary px-4"><i class="bi bi-send me-1"></i>Add Entries</button>
+        <span class="hint">One task per line · All fields are optional except description</span>
+      </div>
+    </form>
+    <div class="mt-3 p-3 rounded" style="background:#f8f9ff;font-size:.8rem;color:#555;">
+      <strong>Rules applied automatically:</strong>
+      Resolved Date = Created + 1 day if not provided &nbsp;·&nbsp;
+      Multiple dates = separate rows &nbsp;·&nbsp;
+      Entries sorted by Created Date &nbsp;·&nbsp;
+      Defaults: Type=General &amp; Admin, Priority=Low, Status=Completed
+    </div>
+  </div>
+</div>
+
+<!-- This week's tasks -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-2">
+      <span><i class="bi bi-table me-2"></i>This Week's Tasks</span>
+      <button type="button" class="btn btn-sm btn-light py-0 px-2" onclick="addNewRow()" title="Add a new row directly in the table">
+        <i class="bi bi-plus-lg"></i>
+      </button>
+    </div>
+    <span class="hours-badge" id="hoursTotal">{{ total_hours }}h total</span>
+  </div>
+  <div class="card-body p-0">
+    <form method="post" action="/delete-selected" id="bulkForm">
+    {% if tasks %}
+    <div class="d-flex gap-2 px-3 pt-2 pb-1 border-bottom">
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleAll()">
+        <i class="bi bi-check2-square me-1"></i>Select All
+      </button>
+      <button type="submit" class="btn btn-sm btn-danger"
+              onclick="return document.querySelectorAll('.row-check:checked').length>0 || (alert('Select at least one row.'),false)">
+        <i class="bi bi-trash me-1"></i>Delete Selected
+      </button>
+    </div>
+    {% endif %}
+    <div class="table-responsive">
+    <table class="table tbl table-hover mb-0 small">
+      <thead>
+        <tr>
+          <th style="width:36px"></th>
+          <th>Task ID</th><th>Type</th><th style="min-width:200px">Description</th>
+          <th>Created</th><th>Resolved</th><th>Status</th><th>Hours</th><th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tasksTbody">
+      <datalist id="typeListMain">
+        <option value="General &amp; Admin"><option value="R&amp;D">
+        <option value="Development"><option value="Support"><option value="Testing">
+      </datalist>
+      {% for t in tasks %}
+        <tr>
+          <td><input type="checkbox" name="ids" value="{{ t.id }}" class="form-check-input row-check"></td>
+          <td>
+            <input type="text" class="ie-field form-control form-control-sm fw-semibold"
+                   data-id="{{ t.id }}" data-field="task_id"
+                   value="{{ t.task_id }}" style="min-width:72px">
+          </td>
+          <td>
+            <input type="text" class="ie-field form-control form-control-sm"
+                   data-id="{{ t.id }}" data-field="type"
+                   value="{{ t.type }}" list="typeListMain" style="min-width:100px">
+          </td>
+          <td>
+            <input type="text" class="ie-field form-control form-control-sm"
+                   data-id="{{ t.id }}" data-field="description"
+                   value="{{ t.description }}" style="min-width:190px">
+          </td>
+          <td>
+            <input type="date" class="ie-field form-control form-control-sm"
+                   data-id="{{ t.id }}" data-field="creation_date"
+                   value="{{ t.creation_date }}" style="min-width:118px">
+          </td>
+          <td>
+            <input type="date" class="ie-field form-control form-control-sm"
+                   data-id="{{ t.id }}" data-field="resolved_on"
+                   value="{{ t.resolved_on }}" style="min-width:118px">
+          </td>
+          <td>
+            <select class="status-sel" data-id="{{ t.id }}" data-field="status">
+              <option {% if t.status=='Completed' %}selected{% endif %}>Completed</option>
+              <option {% if t.status=='In Progress' %}selected{% endif %}>In Progress</option>
+              <option {% if t.status=='Pending' %}selected{% endif %}>Pending</option>
+              <option {% if t.status=='On Hold' %}selected{% endif %}>On Hold</option>
+            </select>
+          </td>
+          <td class="text-center">
+            <input type="number" step="0.5" min="0" max="24"
+                   class="hours-edit form-control form-control-sm text-center fw-bold p-0"
+                   value="{{ t.hours_spent }}" data-id="{{ t.id }}"
+                   style="width:68px;margin:auto;border:1px solid transparent;background:transparent;box-shadow:none;">
+          </td>
+          <td>
+            <input type="text" class="ie-field form-control form-control-sm"
+                   data-id="{{ t.id }}" data-field="notes"
+                   value="{{ t.notes or '' }}" placeholder="—"
+                   style="min-width:110px;color:#555;font-size:.8rem;">
+          </td>
+          <td class="text-nowrap">
+            <a href="/clone/{{ t.id }}?week={{ fri.isoformat() }}" class="btn btn-outline-secondary btn-sm py-0 me-1"
+               title="Clone this row">
+              <i class="bi bi-copy"></i>
+            </a>
+            <a href="/delete/{{ t.id }}?week={{ fri.isoformat() }}" class="btn btn-outline-danger btn-sm py-0"
+               onclick="return confirm('Delete this entry?')">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+      {% if not tasks %}
+      <tr id="emptyRow">
+        <td colspan="10" class="text-center py-4 text-muted">
+          <i class="bi bi-inbox fs-2 d-block mb-1"></i>No tasks yet — click <strong>+</strong> in the header to add one.
+        </td>
+      </tr>
+      {% endif %}
+      </tbody>
+      <tfoot>
+        <tr class="table-info fw-bold">
+          <td colspan="7" class="text-end">Total Hours</td>
+          <td class="text-center" id="hoursTotalRow">{{ total_hours }}</td>
+          <td colspan="2"></td>
+        </tr>
+      </tfoot>
+    </table>
+    </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+// ── Textarea: Shift+Enter = newline, Enter = submit ───────────────────────────
+document.querySelector('textarea').addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); this.form.submit(); }
+});
+
+// ── Bulk-select checkboxes ────────────────────────────────────────────────────
+function toggleAll() {
+  const boxes = document.querySelectorAll('.row-check');
+  const allChecked = [...boxes].every(b => b.checked);
+  boxes.forEach(b => b.checked = !allChecked);
+}
+
+// ── Hours total recalc ────────────────────────────────────────────────────────
+function recalcTotal() {
+  let total = 0;
+  document.querySelectorAll('.hours-edit').forEach(i => total += parseFloat(i.value) || 0);
+  const t = Math.round(total * 10) / 10;
+  const badge = document.getElementById('hoursTotal');
+  const row   = document.getElementById('hoursTotalRow');
+  if (badge) badge.textContent = t + 'h total';
+  if (row)   row.textContent   = t;
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+function flashCell(el, ok) {
+  el.style.border     = ok ? '1px solid #198754' : '1px solid #dc3545';
+  el.style.background = ok ? '#f0fff4' : '#fff0f0';
+  setTimeout(() => { el.style.borderColor = 'transparent'; el.style.background = 'transparent'; },
+             ok ? 900 : 1400);
+}
+function saveField(el, field, value, orig, onSuccess) {
+  fetch('/update/' + el.dataset.id, {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'field=' + encodeURIComponent(field) + '&value=' + encodeURIComponent(value)
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { flashCell(el, true); if (onSuccess) onSuccess(); }
+    else      { el.value = orig; flashCell(el, false); }
+  }).catch(() => { el.value = orig; });
+}
+
+// ── Hours (number input, keeps totals live) ───────────────────────────────────
+document.querySelectorAll('.hours-edit').forEach(input => {
+  const orig = input.value;
+  input.addEventListener('focus', function() {
+    this.style.border = '1px solid #2E75B6'; this.style.background = '#fff';
+  });
+  input.addEventListener('blur', function() {
+    const val = parseFloat(this.value);
+    if (isNaN(val) || val < 0 || val > 24) { this.value = orig; flashCell(this, false); return; }
+    saveField(this, 'hours_spent', val, orig, () => { this.value = val; recalcTotal(); });
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key==='Enter')  { e.preventDefault(); this.blur(); }
+    if (e.key==='Escape') { this.value = orig; this.blur(); }
+  });
+});
+
+// ── Universal inline field editor (text, date, notes, task_id, etc.) ─────────
+document.querySelectorAll('.ie-field').forEach(input => {
+  const orig  = input.value;
+  const field = input.dataset.field;
+
+  input.addEventListener('focus', function() {
+    this.style.borderColor = '#2E75B6'; this.style.background = '#fff';
+  });
+  input.addEventListener('blur', function() {
+    const val = this.value.trim();
+    if (val === orig.trim()) {
+      this.style.borderColor = 'transparent'; this.style.background = 'transparent'; return;
+    }
+    saveField(this, field, val, orig, () => {
+      // When creation_date changes → auto-save resolved_on = created + 1 day
+      if (field === 'creation_date') {
+        const row = this.closest('tr');
+        const resEl = row ? row.querySelector('[data-field="resolved_on"]') : null;
+        if (resEl) {
+          const d = new Date(val + 'T12:00:00');
+          d.setDate(d.getDate() + 1);
+          const newRes = d.toISOString().split('T')[0];
+          resEl.value = newRes;
+          saveField(resEl, 'resolved_on', newRes, resEl.value, null);
+        }
+      }
+    });
+  });
+  input.addEventListener('keydown', function(e) {
+    if (e.key==='Enter')  { e.preventDefault(); this.blur(); }
+    if (e.key==='Escape') { this.value = orig; this.style.borderColor='transparent'; this.style.background='transparent'; this.blur(); }
+  });
+});
+
+// ── Status select (pill style, saves on change) ───────────────────────────────
+function applyStatusClass(sel) {
+  sel.classList.remove('s-Completed','s-In-Progress','s-Pending','s-On-Hold');
+  sel.classList.add('s-' + sel.value.replace(/\s+/g,'-'));
+}
+document.querySelectorAll('.status-sel').forEach(sel => {
+  applyStatusClass(sel);
+  sel.addEventListener('change', function() {
+    const orig = [...this.options].find(o => o.defaultSelected)?.value || 'Completed';
+    fetch('/update/' + this.dataset.id, {
+      method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: 'field=status&value=' + encodeURIComponent(this.value)
+    }).then(r => r.json()).then(d => {
+      if (d.ok) { applyStatusClass(this); flashCell(this, true); }
+      else      { this.value = orig; applyStatusClass(this); flashCell(this, false); }
+    });
+  });
+});
+
+// ── Add new inline row ────────────────────────────────────────────────────────
+function addNewRow() {
+  if (document.getElementById('newRow')) {
+    document.getElementById('nr_task_id').focus(); return;
+  }
+  // Remove empty-state row if present
+  const empty = document.getElementById('emptyRow');
+  if (empty) empty.remove();
+
+  // Default to Monday of the currently viewed week (so adding a row stays in that week)
+  const defDate  = document.querySelector('input[name="default_date"]').value;
+  const today    = defDate || new Date().toISOString().split('T')[0];
+  const tomorrow = (d => { d.setDate(d.getDate()+1); return d.toISOString().split('T')[0]; })(new Date(today + 'T12:00:00'));
+
+  const tr = document.createElement('tr');
+  tr.id = 'newRow';
+  tr.style.cssText = 'background:#eef4ff;';
+  tr.innerHTML = `
+    <td></td>
+    <td><input id="nr_task_id" type="text" class="form-control form-control-sm"
+               placeholder="TSK12345" style="min-width:80px"></td>
+    <td><input id="nr_type" type="text" class="form-control form-control-sm"
+               value="General &amp; Admin" list="typeList" style="min-width:110px">
+        <datalist id="typeList">
+          <option value="General &amp; Admin"><option value="R&amp;D">
+          <option value="Development"><option value="Support"><option value="Testing">
+        </datalist></td>
+    <td><input id="nr_desc" type="text" class="form-control form-control-sm"
+               placeholder="Description…" style="min-width:180px"></td>
+    <td><input id="nr_created" type="date" class="form-control form-control-sm"
+               value="${today}" style="min-width:120px"></td>
+    <td><input id="nr_resolved" type="date" class="form-control form-control-sm"
+               value="${tomorrow}" style="min-width:120px"></td>
+    <td><select id="nr_status" class="form-select form-select-sm" style="min-width:110px">
+          <option>Completed</option><option>In Progress</option>
+          <option>Pending</option><option>On Hold</option>
+        </select></td>
+    <td><input id="nr_hours" type="number" step="0.5" min="0" max="24"
+               class="form-control form-control-sm text-center" value="0"
+               style="width:68px;margin:auto"></td>
+    <td><input id="nr_notes" type="text" class="form-control form-control-sm"
+               placeholder="Notes…"></td>
+    <td>
+      <button class="btn btn-success btn-sm py-0 me-1" type="button"
+              onclick="saveNewRow()" title="Save row"><i class="bi bi-check-lg"></i></button>
+      <button class="btn btn-outline-secondary btn-sm py-0" type="button"
+              onclick="cancelNewRow()" title="Cancel"><i class="bi bi-x-lg"></i></button>
+    </td>`;
+
+  document.getElementById('tasksTbody').prepend(tr);
+
+  // Auto-advance resolved date when created changes
+  document.getElementById('nr_created').addEventListener('change', function() {
+    const d = new Date(this.value + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    document.getElementById('nr_resolved').value = d.toISOString().split('T')[0];
+  });
+
+  document.getElementById('nr_task_id').focus();
+}
+
+function cancelNewRow() {
+  const r = document.getElementById('newRow');
+  if (r) r.remove();
+}
+
+function saveNewRow() {
+  const taskId   = document.getElementById('nr_task_id').value.trim()  || 'Adhoc';
+  const type     = document.getElementById('nr_type').value.trim()      || 'General & Admin';
+  const desc     = document.getElementById('nr_desc').value.trim();
+  const created  = document.getElementById('nr_created').value;
+  const resolved = document.getElementById('nr_resolved').value;
+  const status   = document.getElementById('nr_status').value;
+  const hours    = document.getElementById('nr_hours').value  || '0';
+  const notes    = document.getElementById('nr_notes').value.trim();
+
+  if (!created) { alert('Please set a Created date.'); return; }
+
+  const saveBtn = document.querySelector('#newRow .btn-success');
+  saveBtn.disabled = true; saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
+  fetch('/add-row', {
+    method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({task_id:taskId, type, description:desc,
+          creation_date:created, resolved_on:resolved, status, hours_spent:hours, notes}).toString()
+  }).then(r => r.json()).then(d => {
+    if (d.ok) { window.location.href = '/?week=' + d.week; }
+    else      { alert('Save failed: ' + (d.error||'unknown error'));
+                saveBtn.disabled=false; saveBtn.innerHTML='<i class="bi bi-check-lg"></i>'; }
+  }).catch(err => { alert('Network error: ' + err);
+                    saveBtn.disabled=false; saveBtn.innerHTML='<i class="bi bi-check-lg"></i>'; });
+}
+</script>
+{% endblock %}
